@@ -17,6 +17,9 @@ bot = telebot.TeleBot(TOKEN)
 
 API_URL = "https://api-sg.aliexpress.com/sync"
 
+# Lista de palabras clave
+KEYWORDS = ["smartphone", "earphones", "watch", "laptop", "camera"]
+
 # ==============================
 # FUNCIÓN: generar firma
 # ==============================
@@ -29,14 +32,14 @@ def sign(params, secret):
 # ==============================
 # FUNCIÓN: obtener productos
 # ==============================
-def obtener_productos():
+def obtener_productos(keyword):
     params = {
         "app_key": APP_KEY,
         "method": "aliexpress.affiliate.product.query",
         "timestamp": str(int(time.time() * 1000)),
         "sign_method": "md5",
-        "keywords": "smartphone",   # palabra clave (puedes cambiarla)
-        "fields": "productId,productTitle,appSalePrice,productUrl,promotionLink,discount,shopName",
+        "keywords": keyword,
+        "fields": "productId,productTitle,appSalePrice,productUrl,promotionLink,discount,shopName,productMainImageUrl",
         "page_size": 5
     }
     params["sign"] = sign(params, APP_SECRET)
@@ -61,7 +64,10 @@ def obtener_productos():
 # FUNCIÓN: publicar en canal
 # ==============================
 def publicar_oferta():
-    productos = obtener_productos()
+    # Elegir una palabra clave al azar
+    keyword = random.choice(KEYWORDS)
+    productos = obtener_productos(keyword)
+
     if productos:
         item = random.choice(productos)
         titulo = item.get("product_title", "Producto sin título")
@@ -69,6 +75,7 @@ def publicar_oferta():
         descuento = item.get("discount", "N/A")
         tienda = item.get("shop_name", "AliExpress")
         enlace = item.get("promotion_link", "")
+        imagen = item.get("product_main_image_url", None)
 
         # Mensaje con formato atractivo
         mensaje = (
@@ -83,13 +90,22 @@ def publicar_oferta():
         boton = types.InlineKeyboardButton("🛒 Comprar ahora", url=enlace)
         markup.add(boton)
 
-        bot.send_message(
-            CHAT_ID,
-            text=mensaje,
-            parse_mode="HTML",
-            reply_markup=markup,
-            disable_web_page_preview=False
-        )
+        if imagen:
+            bot.send_photo(
+                CHAT_ID,
+                photo=imagen,
+                caption=mensaje,
+                parse_mode="HTML",
+                reply_markup=markup
+            )
+        else:
+            bot.send_message(
+                CHAT_ID,
+                text=mensaje,
+                parse_mode="HTML",
+                reply_markup=markup,
+                disable_web_page_preview=False
+            )
     else:
         bot.send_message(CHAT_ID, text="⚠️ No se encontraron productos esta vez.")
 
