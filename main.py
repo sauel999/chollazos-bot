@@ -4,24 +4,23 @@ import hashlib
 import time
 import random
 import telebot
-from telebot import types
 
 # ==============================
 # CONFIGURACIÓN
 # ==============================
-TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
 APP_KEY = os.getenv("ALIEXPRESS_APP_KEY")
 APP_SECRET = os.getenv("ALIEXPRESS_APP_SECRET")
-CHAT_ID = int(os.getenv("CHAT_ID", "-1002728128355"))  # tu canal
-bot = telebot.TeleBot(TOKEN)
 
 API_URL = "https://api-sg.aliexpress.com/sync"
 
-# Lista de palabras clave
-KEYWORDS = ["smartphone", "earphones", "watch", "laptop", "camera"]
+bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # ==============================
-# FUNCIÓN: generar firma
+# FUNCIÓN: FIRMAR PETICIÓN
 # ==============================
 def sign(params, secret):
     sorted_params = sorted(params.items())
@@ -30,90 +29,76 @@ def sign(params, secret):
     return hashlib.md5(sign_str.encode("utf-8")).hexdigest().upper()
 
 # ==============================
-# FUNCIÓN: obtener productos
+# FUNCIÓN: OBTENER PRODUCTOS
 # ==============================
-def obtener_productos(keyword):
+def get_products():
     params = {
         "app_key": APP_KEY,
         "method": "aliexpress.affiliate.product.query",
         "timestamp": str(int(time.time() * 1000)),
         "sign_method": "md5",
-        "keywords": keyword,
-        "fields": "productId,productTitle,appSalePrice,productUrl,promotionLink,discount,shopName,productMainImageUrl",
-        "page_size": 5
+        "keywords": "earbuds,charger,wireless,smart,robot,air fryer,beauty,massage,portable,projector",
+        "target_sale_price_from": "3",
+        "target_sale_price_to": "40",
+        "fields": "productId,productTitle,appSalePrice,productUrl,productMainImageUrl,promotionLink"
     }
+
+    # Firmar petición
     params["sign"] = sign(params, APP_SECRET)
 
-    try:
-        response = requests.get(API_URL, params=params)
-        data = response.json()
+    response = requests.get(API_URL, params=params)
+    data = response.json()
 
-        productos = (
-            data.get("aliexpress_affiliate_product_query_response", {})
-                .get("resp_result", {})
-                .get("result", {})
-                .get("products", {})
-                .get("product", [])
-        )
-        return productos
+    try:
+        products = data["aliexpress_affiliate_product_query_response"]["resp_result"]["result"]["products"]["product"]
+        return products
     except Exception as e:
-        print("❌ Error en la API:", e)
+        print("❌ Error obteniendo productos:", e)
         return []
 
 # ==============================
-# FUNCIÓN: publicar en canal
+# FUNCIÓN: PUBLICAR EN TELEGRAM
 # ==============================
-def publicar_oferta():
-    # Elegir una palabra clave al azar
-    keyword = random.choice(KEYWORDS)
-    productos = obtener_productos(keyword)
+def publicar_producto(product):
+    titulo = product.get("product_title", "Producto AliExpress")
+    precio = product.get("target_sale_price", "N/A")
+    enlace = product.get("promotion_link", product.get("product_url"))
+    imagen = product.get("product_main_image_url", "")
 
-    if productos:
-        item = random.choice(productos)
-        titulo = item.get("product_title", "Producto sin título")
-        precio = item.get("app_sale_price", "??")
-        descuento = item.get("discount", "N/A")
-        tienda = item.get("shop_name", "AliExpress")
-        enlace = item.get("promotion_link", "")
-        imagen = item.get("product_main_image_url", None)
+    mensaje = f"""
+🔥 ¡OFERTA FLASH!
 
-        # Mensaje con formato atractivo
-        mensaje = (
-            f"🔥 <b>{titulo}</b>\n"
-            f"💰 Precio: <b>{precio} USD</b>\n"
-            f"🏷️ Descuento: {descuento}\n"
-            f"📦 Tienda: {tienda}"
+📌 <b>{titulo}</b>
+💰 Precio: <b>{precio} USD</b>
+
+👉 <a href="{enlace}">Comprar ahora</a>
+"""
+
+    try:
+        bot.send_photo(
+            CHAT_ID,
+            photo=imagen,
+            caption=mensaje,
+            parse_mode="HTML"
         )
+        print("✅ Publicado:", titulo)
+    except Exception as e:
+        print("❌ Error publicando en Telegram:", e)
 
-        # Crear botón "Comprar ahora"
-        markup = types.InlineKeyboardMarkup()
-        boton = types.InlineKeyboardButton("🛒 Comprar ahora", url=enlace)
-        markup.add(boton)
-
-        if imagen:
-            bot.send_photo(
-                CHAT_ID,
-                photo=imagen,
-                caption=mensaje,
-                parse_mode="HTML",
-                reply_markup=markup
-            )
+# ==============================
+# LOOP PRINCIPAL
+# ==============================
+def main():
+    while True:
+        productos = get_products()
+        if productos:
+            producto = random.choice(productos)  # Elegir producto aleatorio
+            publicar_producto(producto)
         else:
-            bot.send_message(
-                CHAT_ID,
-                text=mensaje,
-                parse_mode="HTML",
-                reply_markup=markup,
-                disable_web_page_preview=False
-            )
-    else:
-        bot.send_message(CHAT_ID, text="⚠️ No se encontraron productos esta vez.")
+            print("⚠️ No se obtuvieron productos válidos")
 
-print("🤖 Bot automático en marcha (modo cada hora)...")
+        # Esperar 1 hora (3600 segundos) antes de publicar de nuevo
+        time.sleep(3600)
 
-# ==============================
-# Bucle automático (cada hora)
-# ==============================
-while True:
-    publicar_oferta()
-    time.sleep(3600)  # cada hora
+if __name__ == "__main__":
+    main()
