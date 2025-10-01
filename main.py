@@ -51,7 +51,7 @@ def get_products():
         "keywords": "earbuds,charger,wireless,smart,robot,air fryer,beauty,massage,portable,projector",
         "target_sale_price_from": "3",
         "target_sale_price_to": "40",
-        "fields": "productId,productTitle,appSalePrice,originalPrice,discount,shopTitle,productUrl,productMainImageUrl,promotionLink"
+        "fields": "productId,productTitle,appSalePrice,originalPrice,discount,shopTitle,storeId,productUrl,productMainImageUrl,promotionLink"
     }
 
     # Firmar petición
@@ -77,17 +77,35 @@ def publicar_producto(product):
     titulo = product.get("product_title", "Producto AliExpress")
     precio = product.get("target_sale_price", "N/A")
     precio_original = product.get("original_price", "N/A")
-    descuento = product.get("discount", "N/A")
-    tienda = product.get("shop_title", "AliExpress")
     enlace = product.get("promotion_link", product.get("product_url"))
     imagen = product.get("product_main_image_url", "")
+
+    # Calcular descuento manual
+    descuento_calc = "N/A"
+    try:
+        if precio and precio_original and precio_original != "N/A":
+            precio_f = float(str(precio).replace("$", "").replace("USD", "").strip())
+            precio_o = float(str(precio_original).replace("$", "").replace("USD", "").strip())
+            if precio_o > 0:
+                descuento_calc = round(((precio_o - precio_f) / precio_o) * 100, 1)
+    except Exception as e:
+        print("⚠️ Error calculando descuento:", e)
+
+    # Obtener tienda
+    tienda = product.get("shop_title")
+    if not tienda:
+        tienda_id = product.get("store_id") or product.get("storeId")
+        if tienda_id:
+            tienda = f"https://es.aliexpress.com/store/{tienda_id}"
+        else:
+            tienda = "AliExpress"
 
     mensaje = f"""
 🔥 ¡OFERTA FLASH!
 
 📌 <b>{titulo}</b>
 💰 Precio: <b>{precio} USD</b> (Antes: {precio_original} USD)
-🔻 Descuento: {descuento}%
+🔻 Descuento: {descuento_calc}%
 🏬 Tienda: {tienda}
 
 👉 <a href="{enlace}">Comprar ahora</a>
