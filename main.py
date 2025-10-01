@@ -51,7 +51,7 @@ def get_products():
         "keywords": "earbuds,charger,wireless,smart,robot,air fryer,beauty,massage,portable,projector",
         "target_sale_price_from": "3",
         "target_sale_price_to": "40",
-        "fields": "productId,productTitle,appSalePrice,productUrl,productMainImageUrl,promotionLink"
+        "fields": "productId,productTitle,appSalePrice,originalPrice,discount,shopTitle,productUrl,productMainImageUrl,promotionLink"
     }
 
     # Firmar petición
@@ -76,6 +76,9 @@ def publicar_producto(product):
 
     titulo = product.get("product_title", "Producto AliExpress")
     precio = product.get("target_sale_price", "N/A")
+    precio_original = product.get("original_price", "N/A")
+    descuento = product.get("discount", "N/A")
+    tienda = product.get("shop_title", "AliExpress")
     enlace = product.get("promotion_link", product.get("product_url"))
     imagen = product.get("product_main_image_url", "")
 
@@ -83,7 +86,9 @@ def publicar_producto(product):
 🔥 ¡OFERTA FLASH!
 
 📌 <b>{titulo}</b>
-💰 Precio: <b>{precio} USD</b>
+💰 Precio: <b>{precio} USD</b> (Antes: {precio_original} USD)
+🔻 Descuento: {descuento}%
+🏬 Tienda: {tienda}
 
 👉 <a href="{enlace}">Comprar ahora</a>
 """
@@ -116,5 +121,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
