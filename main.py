@@ -19,6 +19,13 @@ API_URL = "https://api-sg.aliexpress.com/sync"
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
+# Mostrar logs iniciales
+print("🚀 Bot iniciado")
+print("📌 TELEGRAM_TOKEN leído:", "OK" if TELEGRAM_TOKEN else "❌ VACÍO")
+print("📌 CHAT_ID leído:", CHAT_ID)
+print("📌 APP_KEY leído:", "OK" if APP_KEY else "❌ VACÍO")
+print("📌 APP_SECRET leído:", "OK" if APP_SECRET else "❌ VACÍO")
+
 # ==============================
 # FUNCIÓN: FIRMAR PETICIÓN
 # ==============================
@@ -46,10 +53,9 @@ def get_products():
     # Firmar petición
     params["sign"] = sign(params, APP_SECRET)
 
-    response = requests.get(API_URL, params=params)
-    data = response.json()
-
     try:
+        response = requests.get(API_URL, params=params, timeout=15)
+        data = response.json()
         products = data["aliexpress_affiliate_product_query_response"]["resp_result"]["result"]["products"]["product"]
         return products
     except Exception as e:
@@ -60,6 +66,10 @@ def get_products():
 # FUNCIÓN: PUBLICAR EN TELEGRAM
 # ==============================
 def publicar_producto(product):
+    if not CHAT_ID:
+        print("⚠️ CHAT_ID está vacío. No se puede publicar en Telegram.")
+        return
+
     titulo = product.get("product_title", "Producto AliExpress")
     precio = product.get("target_sale_price", "N/A")
     enlace = product.get("promotion_link", product.get("product_url"))
@@ -97,8 +107,10 @@ def main():
         else:
             print("⚠️ No se obtuvieron productos válidos")
 
-        # Esperar 1 hora (3600 segundos) antes de publicar de nuevo
+        # Esperar 1 hora (3600 segundos)
         time.sleep(3600)
 
 if __name__ == "__main__":
     main()
+
+
