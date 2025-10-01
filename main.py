@@ -10,7 +10,9 @@ import telebot
 # ==============================
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+# Leer CHAT_ID de dos formas posibles (compatibilidad)
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID") or os.getenv("CHAT_ID")
 
 APP_KEY = os.getenv("ALIEXPRESS_APP_KEY")
 APP_SECRET = os.getenv("ALIEXPRESS_APP_SECRET")
@@ -19,10 +21,12 @@ API_URL = "https://api-sg.aliexpress.com/sync"
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# Mostrar logs iniciales
+# ==============================
+# LOG INICIAL
+# ==============================
 print("🚀 Bot iniciado")
 print("📌 TELEGRAM_TOKEN leído:", "OK" if TELEGRAM_TOKEN else "❌ VACÍO")
-print("📌 CHAT_ID leído:", CHAT_ID)
+print("📌 CHAT_ID leído:", CHAT_ID if CHAT_ID else "❌ VACÍO")
 print("📌 APP_KEY leído:", "OK" if APP_KEY else "❌ VACÍO")
 print("📌 APP_SECRET leído:", "OK" if APP_SECRET else "❌ VACÍO")
 
