@@ -51,7 +51,7 @@ def get_products():
         "keywords": "earbuds,charger,wireless,smart,robot,air fryer,beauty,massage,portable,projector",
         "target_sale_price_from": "3",
         "target_sale_price_to": "40",
-        "fields": "productId,productTitle,appSalePrice,originalPrice,discount,shopTitle,storeId,productUrl,productMainImageUrl,promotionLink"
+        "fields": "productId,productTitle,appSalePrice,originalPrice,evaluateScore,shopTitle,storeId,productUrl,productMainImageUrl,promotionLink"
     }
 
     # Firmar petición
@@ -67,6 +67,24 @@ def get_products():
         return []
 
 # ==============================
+# FUNCIÓN: ELEGIR EMOJI SEGÚN CATEGORÍA
+# ==============================
+def elegir_emoji(titulo):
+    titulo_lower = titulo.lower()
+    if "watch" in titulo_lower or "smart" in titulo_lower:
+        return "📱"
+    elif "earbud" in titulo_lower or "headphone" in titulo_lower:
+        return "🎧"
+    elif "shoe" in titulo_lower or "sneaker" in titulo_lower:
+        return "👟"
+    elif "bag" in titulo_lower or "backpack" in titulo_lower:
+        return "🎒"
+    elif "home" in titulo_lower or "kitchen" in titulo_lower:
+        return "🏠"
+    else:
+        return "🔥"
+
+# ==============================
 # FUNCIÓN: PUBLICAR EN TELEGRAM
 # ==============================
 def publicar_producto(product):
@@ -79,19 +97,22 @@ def publicar_producto(product):
     precio_original = product.get("original_price", "N/A")
     enlace = product.get("promotion_link", product.get("product_url"))
     imagen = product.get("product_main_image_url", "")
+    valoracion = product.get("evaluate_score", "N/A")
 
-    # Calcular descuento manual
+    # Cálculo manual del descuento
     descuento_calc = "N/A"
     try:
         if precio and precio_original and precio_original != "N/A":
             precio_f = float(str(precio).replace("$", "").replace("USD", "").strip())
             precio_o = float(str(precio_original).replace("$", "").replace("USD", "").strip())
-            if precio_o > 0:
+            if precio_o > 0 and precio_f < precio_o:
                 descuento_calc = round(((precio_o - precio_f) / precio_o) * 100, 1)
-    except Exception as e:
-        print("⚠️ Error calculando descuento:", e)
+            else:
+                descuento_calc = 0
+    except:
+        pass
 
-    # Obtener tienda
+    # Tienda
     tienda = product.get("shop_title")
     if not tienda:
         tienda_id = product.get("store_id") or product.get("storeId")
@@ -100,16 +121,25 @@ def publicar_producto(product):
         else:
             tienda = "AliExpress"
 
+    # Emoji por categoría
+    emoji = elegir_emoji(titulo)
+
+    # Construcción del mensaje
     mensaje = f"""
-🔥 ¡OFERTA FLASH!
+{emoji} ¡OFERTA FLASH!
 
 📌 <b>{titulo}</b>
-💰 Precio: <b>{precio} USD</b> (Antes: {precio_original} USD)
-🔻 Descuento: {descuento_calc}%
-🏬 Tienda: {tienda}
 
-👉 <a href="{enlace}">Comprar ahora</a>
+💰 <b>{precio} USD</b> (Antes: <s>{precio_original} USD</s>)
 """
+
+    if descuento_calc not in ["N/A", 0, 0.0]:
+        mensaje += f"🔻 Descuento: {descuento_calc}%\n"
+
+    if valoracion and valoracion != "N/A":
+        mensaje += f"⭐ Valoración: {valoracion}/5\n"
+
+    mensaje += f"🏬 Tienda: <i>{tienda}</i>\n\n👉 <a href=\"{enlace}\">Comprar ahora</a>"
 
     try:
         bot.send_photo(
